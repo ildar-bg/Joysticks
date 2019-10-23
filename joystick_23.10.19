@@ -14,7 +14,7 @@
 #define RED_LED_1 11    //red led first joystick
 #define RED_LED_2 9     //red led second joystick
 
-#define POWER 6 // Input from Aain Arduino
+#define POWER 6 // Input from Main Arduino
 #define exitForControlPannel 7 // if combilation is correct = LOW. Go to Main Arduino
 
 int p = 0; // флаг, че джойстика се е върнал в нулево положение
