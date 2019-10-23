@@ -1,0 +1,264 @@
+
+#include <math.h>
+#include <MsTimer2.h>
+
+#define X_1_JOYSTICK A0 // analog pin connected to X output 1
+#define Y_1_JOYSTICK A1 // analog pin connected to Y output 1
+
+
+#define X_2_JOYSTICK A2 // analog pin connected to X output 2
+#define Y_2_JOYSTICK A3 // analog pin connected to Y output 2
+
+#define GREEN_LED_1 12  // green led first joystick
+#define GREEN_LED_2 10  // green second first joystick
+#define RED_LED_1 11    //red led first joystick
+#define RED_LED_2 9     //red led second joystick
+
+#define POWER 6 // Input from Aain Arduino
+#define exitForControlPannel 7 // if combilation is correct = LOW. Go to Main Arduino
+
+int p = 0; // флаг, че джойстика се е върнал в нулево положение
+int p2 = 0; // флаг 2, че джойстика се е върнал в нулево положение
+String positions[3] ;  // 3 са за да пиша джоистик 1 или 2. Нилата не се ползва
+
+String combination = ("2113");
+String combination_1 = "0000"; //Първоначална комбинация 1
+String combination_2 = "0000"; //Първоначална комбинация 2
+
+bool gues[3];         // 3 са за да пиша джоистик 1 или 2. Нилата не се ползва
+int period = 3000; // период след който се нулират ако нищо не е активно
+unsigned long time_now = 0;
+unsigned long joystick_time_1 = 0;
+unsigned long joystick_time_2 = 0;
+
+int time_betwin_joysticks = 5000; // толеранс между двата джойстика
+int green_led_delay = 1000; // за колко да пресветне зеления диод
+unsigned int long green_led_counter = 0;
+//bool green_flag = false;
+bool red_fash = false;
+
+int long ledCount = 0;
+
+void setup() {
+  for (int i = 9; i <= 12; i++) {
+    pinMode(i, OUTPUT);
+    digitalWrite(i, LOW);
+  }
+  pinMode(POWER, INPUT_PULLUP);
+  pinMode(exitForControlPannel, OUTPUT);
+
+  MsTimer2::set(2, timerInterupt); // задаем период прерывания от таймера 2 мс. // Някаква библиотека за паралелен процес
+  MsTimer2::start();
+
+}
+
+void loop() {
+  if (digitalRead(POWER) == LOW) { // ако ардуиното е активирано от Основното Ардуино
+
+    whatIsPressed(1);
+    whatIsPressed(2);
+    timeIsOver();
+
+    if (ledCount >= 1000) { // Ако таймера на зеления LED  е достигнат, и двата зенели Леда се гасят.
+      digitalWrite(GREEN_LED_1, LOW);
+      digitalWrite(GREEN_LED_2, LOW);
+    }
+  }
+
+  else {
+    digitalWrite(GREEN_LED_1, LOW);
+    digitalWrite(GREEN_LED_2, LOW);
+  }
+
+
+}
+
+
+
+String whatIsPressed (int joystick) {
+
+  if (joystick == 1) {
+    if ((analogRead(X_1_JOYSTICK) > 450) && (analogRead(X_1_JOYSTICK) < 550) && (analogRead(Y_1_JOYSTICK) < 550) && (analogRead(Y_1_JOYSTICK) > 450) && (p == 0)) {
+      positions[joystick] = "NULL";
+      p = 1;
+    }
+    if ((analogRead(X_1_JOYSTICK) > 1000 ) && (analogRead(Y_1_JOYSTICK) < 550) && (analogRead(Y_1_JOYSTICK) > 450) && (p == 1)) {
+      positions[joystick] = "DOWN";
+      p = 0;
+      combination_1 += '1';
+      blinkLed (GREEN_LED_1,  green_led_delay);
+    }
+    if ((analogRead(X_1_JOYSTICK) < 50 ) && (analogRead(Y_1_JOYSTICK) < 550) && (analogRead(Y_1_JOYSTICK) > 450) && (p == 1)) {
+      positions[joystick] = "UP";
+      p = 0;
+      combination_1 += '3';
+      blinkLed (GREEN_LED_1,  green_led_delay);
+    }
+    if ((analogRead(Y_1_JOYSTICK) < 50 ) && (analogRead(X_1_JOYSTICK) < 550) && (analogRead(X_1_JOYSTICK) > 450) && (p == 1)) {
+      positions[joystick] = "RIGHT";
+      p = 0;
+      combination_1 = '2';
+      blinkLed (GREEN_LED_1,  green_led_delay);
+    }
+    if ((analogRead(Y_1_JOYSTICK) > 1000 ) && (analogRead(X_1_JOYSTICK) < 550) && (analogRead(X_1_JOYSTICK) > 450) && (p == 1)) {
+      positions[joystick] = "LEFT";
+      p = 0;
+      combination_1 += "";
+      blinkLed (GREEN_LED_1,  green_led_delay);
+    }
+  }
+  ////////////////////   2  /////////////////////////////
+
+
+  if (joystick == 2) {
+    if ((analogRead(X_2_JOYSTICK) > 450) && (analogRead(X_2_JOYSTICK) < 550) && (analogRead(Y_2_JOYSTICK) < 550) && (analogRead(Y_2_JOYSTICK) > 450) && (p2 == 0)) {
+      positions[joystick] = "NULL";
+      p2 = 1;
+    }
+    if ((analogRead(X_2_JOYSTICK) > 1000 ) && (analogRead(Y_2_JOYSTICK) < 550) && (analogRead(Y_2_JOYSTICK) > 450) && (p2 == 1)) {
+      positions[joystick] = "DOWN";
+      p2 = 0;
+      combination_2 += '1';
+      blinkLed (GREEN_LED_2,  green_led_delay);
+    }
+    if ((analogRead(X_2_JOYSTICK) < 50 ) && (analogRead(Y_2_JOYSTICK) < 550) && (analogRead(Y_2_JOYSTICK) > 450) && (p2 == 1)) {
+
+      positions[joystick] = "UP";
+      p2 = 0;
+      combination_2 += '3';
+      blinkLed (GREEN_LED_2,  green_led_delay);
+    }
+    if ((analogRead(Y_2_JOYSTICK) < 50 ) && (analogRead(X_2_JOYSTICK) < 550) && (analogRead(X_2_JOYSTICK) > 450) && (p2 == 1)) {
+      positions[joystick] = "RIGHT";
+      p2 = 0;
+      combination_2 = '2';
+      blinkLed (GREEN_LED_2,  green_led_delay);
+    }
+    if ((analogRead(Y_2_JOYSTICK) > 1000 ) && (analogRead(X_2_JOYSTICK) < 550) && (analogRead(X_2_JOYSTICK) > 450) && (p2 == 1)) {
+      positions[joystick] = "LEFT";
+      p2 = 0;
+      combination_2 += "";
+      blinkLed (GREEN_LED_2,  green_led_delay);
+    }
+  }
+
+  if ((positions[joystick] != "") && (positions[joystick] != "NULL"))  {
+    time_now = millis();
+    red_fash = true;
+    checkCombination(joystick);
+    positions[joystick] = "";
+
+  }
+
+  return positions[joystick];
+}
+
+
+void checkCombination (int joystick) {
+
+  if (joystick == 1) {
+    if (combination_1.length() != "") {
+      Serial.println(combination_1);
+    }
+    if (combination_1 == combination) {
+      // Serial.print("Congratilation!!!  You gues the code on joystick "); Serial.println(joystick);
+      combination_1 = "";
+      gues[joystick] = true;
+      joystick_time_1 = millis();
+      digitalWrite(GREEN_LED_1, HIGH);
+      ledCount = 0;
+    }
+    else {
+      gues[joystick] = false;
+    }
+
+    if (combination_1.length() >= 4) {
+      combination_1 = "";
+      // Serial.print("Try again on joystick: ");  Serial.println(joystick);
+    }
+  }
+
+  if (joystick == 2) {
+
+    if (combination_2.length() != "") {
+      //  Serial.println(combination_2);
+    }
+
+    if (combination_2 == combination) {
+      //  Serial.print("Congratilation!!!  You gues the code on joystick "); Serial.println(joystick);
+      combination_2 = "";
+      gues[joystick] = true;
+      joystick_time_2 = millis();
+      digitalWrite(GREEN_LED_2, HIGH);
+      ledCount = 0;
+    }
+    else {
+      gues[joystick] = false;
+    }
+
+    if (combination_2.length() >= 4) {
+      combination_2 = "";
+      //     Serial.print("Try again on joystick: ");  Serial.println(joystick);
+    }
+  }
+
+
+  time_betwin_joysticks = joystick_time_1 - joystick_time_2;
+
+  if (abs(time_betwin_joysticks) < 2000) {
+
+    if (((gues[1] == true) && (gues[2] == true))     ) {
+      //      Serial.print("Congratilation!!!  You gues the code on both joysticks!!!!");
+      while (1) {
+        // TODO: open the door
+        digitalWrite(GREEN_LED_1, HIGH);
+        digitalWrite(GREEN_LED_2, HIGH);
+        digitalWrite(exitForControlPannel, LOW);
+
+      }
+    }
+  }
+
+}
+
+
+void timeIsOver() {
+  if (red_fash == true) {
+    if (millis() > time_now + period) {
+
+      for (int i = 1; i <= 5; i++) {
+        digitalWrite(RED_LED_1, HIGH);
+        digitalWrite(RED_LED_2, HIGH);
+        delay(50);
+        digitalWrite(RED_LED_1, LOW);
+        digitalWrite(RED_LED_2, LOW);
+        delay(50);
+      }
+      Serial.println("Time is over!!!");
+      combination_1 = "";
+      combination_2 = "";
+      red_fash = false;
+    }
+  }
+}
+
+
+void blinkLed (int led,  int delays) {
+
+  digitalWrite(led, HIGH);
+  green_led_counter = 0;
+  if (green_led_counter > delays) {
+    digitalWrite(led, LOW);
+    green_led_counter = 0;
+  }
+
+}
+
+
+void  timerInterupt() {
+  ledCount++; // счетчик светодиода
+  green_led_counter++;
+
+
+
+}
